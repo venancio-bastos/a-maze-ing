@@ -1,0 +1,24 @@
+# =========================
+# Python
+# =========================
+# Ignorar pastas de cache geradas automaticamente pelo Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Ambientes Virtuais
+# =========================
+# Ignorar a pasta do ambiente virtual
+venv/
+.venv/
+
+# =========================
+# Editores de Texto e SO
+# =========================
+# Ignorar as configurações locais do VS Code
+.vscode/
+
+# Ignorar ficheiros de sistema do macOS e Windows
+.DS_Store
+Thumbs.db
