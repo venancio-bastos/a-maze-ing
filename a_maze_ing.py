@@ -23,7 +23,7 @@ class MazeApp:
 			{"bg": 0x1b1b1b, "border": 0x2ecc71, "ui": 0x27ae60, "text": 0xffffff}, # Hacker Green
 			{"bg": 0x2d132c, "border": 0xee4540, "ui": 0x801336, "text": 0xc72c41}  # Cyberpunk
 		]
-		self.current_palette = 0
+		self.current_palette = random.randrange(len(self.palettes))
 
 	def change_color_scheme(self):
 		self.current_palette = random.randint(0, len(self.palettes) - 1)
@@ -70,7 +70,6 @@ class MazeApp:
 	def draw_ui_text(self):
 		theme = self.palettes[self.current_palette]
 		y_text = int(self.height * 0.92)
-		color = 0xFFFFFF
 		menu_items = ["1: REGEN", "2: PATH", "3: COLOR", "4: QUIT"]
 		spacing = self.width // (len(menu_items) + 1)
 		for i, item in enumerate(menu_items):
