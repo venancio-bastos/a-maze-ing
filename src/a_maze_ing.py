@@ -1,6 +1,6 @@
 from maze_app import MazeApp
 
-def main():
+def main() -> None:
 	app = MazeApp(800, 600, "A-Maze-ing", maze_cols=20, maze_rows=20)
 	app.run()
 
