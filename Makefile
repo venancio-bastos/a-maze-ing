@@ -31,6 +31,7 @@ clean:
 	rm -rf src/__pycache__
 	rm -rf mazegen/__pycache__
 	rm -rf build dist *.egg-info
+	rm -rf src/*.egg-info
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 fclean: clean

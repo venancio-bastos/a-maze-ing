@@ -93,17 +93,17 @@ class MazeApp:
             for x in range(self.maze_cols):
                 cell_val: int = grid[y][x]
                 
-                # NOVO: Verificamos se esta célula faz parte do 42
+                # Check if cell its is part of 42 pattern
                 is_blocked: bool = self.generator.blocked[y][x]
 
                 px: int = maze_x + (x * cell_w)
                 py: int = maze_y + (y * cell_h)
 
-                # Se for parte do 42, pintamos a célula inteira com um rectângulo sólido!
+                # If its part of 42 pattern, fill cell with solid color!
                 if is_blocked:
                     self.draw_rect(px, py, cell_w, cell_h, wall_color)
                 else:
-                    # Se for um caminho normal, desenhamos as linhas finas
+					# If normal path, draw normal lines
                     if cell_val & 1:
                         self.draw_rect(px, py, cell_w, thickness, wall_color)
                     if cell_val & 2:
