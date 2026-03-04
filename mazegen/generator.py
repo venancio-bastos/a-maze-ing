@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 
 ALL_WALLS = 15
-MAX_SCALE = 6
+MAX_SCALE = 2
 
 
 class MazeGenerator:

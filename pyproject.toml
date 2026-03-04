@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "a-maze-ing"
+version = "1.0.0"
+description = "Um gerador e solucionador de labirintos usando MiniLibX"
+authors = [
+    { name = "sasheri & vebastos" }
+]
+requires-python = ">=3.10"
+dependencies = []
