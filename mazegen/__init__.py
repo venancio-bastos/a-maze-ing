@@ -1,3 +1,6 @@
-from .generator import MazeGenerator
+"""Reusable maze generation package."""
 
-__all__ = ["MazeGenerator"]
+from .generator import MazeGenerator
+from .solver import MazeSolver
+
+__all__ = ["MazeGenerator", "MazeSolver"]

@@ -1,47 +1,66 @@
+"""High-level reusable maze generator."""
+
+from __future__ import annotations
+
 import random
+from collections import deque
 from typing import List, Optional, Tuple
 
+from .carver_dfs import DFSMazeCarver
+from .constants import DIRS
+from .grid import MazeGrid
+from .imperfect import LoopAdder
+from .mask_42 import Mask42Builder
+from .solver import MazeSolver
 
-ALL_WALLS = 15
-MAX_SCALE = 2
+
+Coord = Tuple[int, int]
 
 
 class MazeGenerator:
-    """
-    Generate a maze using iterative DFS (stack-based).
-
-    Walls encoding (bit=1 means CLOSED, bit=0 means OPEN):
-        0: North, 1: East, 2: South, 3: West
-
-    The project config requires mandatory keys including:
-    WIDTH, HEIGHT, ENTRY, EXIT, OUTPUT_FILE, PERFECT. :contentReference[oaicite:1]{index=1}
-    """
+    """Generate a maze and expose its structure and solution."""
 
     def __init__(
         self,
         width: int,
         height: int,
-        entry: Tuple[int, int],
-        exit_: Tuple[int, int],
+        entry: Coord,
+        exit_: Coord,
         output_file: str,
         perfect: bool,
         seed: Optional[int] = None,
     ) -> None:
-        """
-        Initialize generator and validate mandatory config values.
+        """Validate and store maze settings."""
+        self._validate(width, height, entry, exit_, output_file, perfect)
 
-        Args:
-            width: Maze width (number of columns).
-            height: Maze height (number of rows).
-            entry: Entry coordinates (x, y).
-            exit_: Exit coordinates (x, y). Named exit_ because 'exit' is a builtin.
-            output_file: Output filename (e.g., "maze.txt").
-            perfect: If True, maze must have exactly one path entry->exit.
-            seed: Optional seed for reproducibility.
+        self.width = width
+        self.height = height
+        self.entry = entry
+        self.exit = exit_
+        self.output_file = output_file
+        self.perfect = perfect
+        self.seed = seed
 
-        Raises:
-            ValueError: If parameters are invalid.
-        """
+        self.rng = random.Random(seed)
+        self.grid = MazeGrid(width, height)
+        self.blocked: List[List[bool]] = [
+            [False for _ in range(width)]
+            for _ in range(height)
+        ]
+
+        self._carver = DFSMazeCarver(self.rng)
+        self._loop_adder = LoopAdder(self.rng)
+
+    @staticmethod
+    def _validate(
+        width: int,
+        height: int,
+        entry: Coord,
+        exit_: Coord,
+        output_file: str,
+        perfect: bool,
+    ) -> None:
+        """Validate the constructor arguments."""
         if not isinstance(width, int) or not isinstance(height, int):
             raise ValueError("Width and height must be integers.")
         if width <= 0 or height <= 0:
@@ -52,209 +71,138 @@ class MazeGenerator:
             or len(entry) != 2
             or not all(isinstance(v, int) for v in entry)
         ):
-            raise ValueError("ENTRY must be a tuple of two integers: (x, y).")
-
+            raise ValueError("ENTRY must be a tuple of two integers.")
         if (
             not isinstance(exit_, tuple)
             or len(exit_) != 2
             or not all(isinstance(v, int) for v in exit_)
         ):
-            raise ValueError("EXIT must be a tuple of two integers: (x, y).")
+            raise ValueError("EXIT must be a tuple of two integers.")
 
-        ex, ey = entry
-        xx, xy = exit_
-
-        if not (0 <= ex < width and 0 <= ey < height):
-            raise ValueError("ENTRY is out of maze bounds.")
-        if not (0 <= xx < width and 0 <= xy < height):
-            raise ValueError("EXIT is out of maze bounds.")
         if entry == exit_:
             raise ValueError("ENTRY and EXIT must be different.")
+
+        entry_x, entry_y = entry
+        exit_x, exit_y = exit_
+
+        if not (0 <= entry_x < width and 0 <= entry_y < height):
+            raise ValueError("ENTRY is out of maze bounds.")
+        if not (0 <= exit_x < width and 0 <= exit_y < height):
+            raise ValueError("EXIT is out of maze bounds.")
 
         if not isinstance(output_file, str) or not output_file.strip():
             raise ValueError("OUTPUT_FILE must be a non-empty string.")
 
         if not isinstance(perfect, bool):
-            raise ValueError("PERFECT must be a boolean (True/False).")
+            raise ValueError("PERFECT must be a boolean.")
 
-        self.width = width
-        self.height = height
-        self.entry = entry
-        self.exit = exit_
-        self.output_file = output_file
-        self.perfect = perfect
-
-        if seed is not None:
-            random.seed(seed)
-
-        self.grid: List[List[int]] = [
-            [ALL_WALLS for _ in range(width)] for _ in range(height)
-        ]
-        self.visited: List[List[bool]] = [
-            [False for _ in range(width)] for _ in range(height)
-        ]
-        self.blocked: List[List[bool]] = [
-            [False for _ in range(width)] for _ in range(height)
+    def _check_connectivity(self) -> bool:
+        """Return True if all free cells are reachable from the entry."""
+        free_cells = [
+            (x, y)
+            for y in range(self.height)
+            for x in range(self.width)
+            if not self.blocked[y][x]
         ]
 
-    def _build_42_mask(self, margin: int = 1) -> bool:
-        """Build a scalable centered '42' mask (may be omitted if too small)."""
-        base_42 = [
-            [1, 0, 0, 0, 1, 1, 1],
-            [1, 0, 0, 0, 0, 0, 1],
-            [1, 1, 1, 0, 1, 1, 1],
-            [0, 0, 1, 0, 1, 0, 0],
-            [0, 0, 1, 0, 1, 1, 1],
+        if not free_cells:
+            return True
+
+        start_x, start_y = self.entry
+        visited = [
+            [False for _ in range(self.width)]
+            for _ in range(self.height)
         ]
-        base_h = len(base_42)
-        base_w = len(base_42[0])
+        visited[start_y][start_x] = True
 
-        self.blocked = [
-            [False for _ in range(self.width)] for _ in range(self.height)
-        ]
+        queue = deque([(start_x, start_y)])
+        count = 1
 
-        min_w = base_w + 2 * margin
-        min_h = base_h + 2 * margin
-        if self.width < min_w or self.height < min_h:
-            print(
-                "Error: Maze too small to draw '42' with margin={}. "
-                "Need at least {}x{}, got {}x{}. Skipping '42' pattern."
-                .format(margin, min_w, min_h, self.width, self.height)
-            )
-            return False
+        while queue:
+            x, y = queue.popleft()
+            cell_value = self.grid.cells[y][x]
 
-        k_w = (self.width - 2 * margin) // base_w
-        k_h = (self.height - 2 * margin) // base_h
-        k = min(k_w, k_h)
-        k = max(1, min(k, MAX_SCALE))
-
-        pat_w = base_w * k
-        pat_h = base_h * k
-        left = (self.width - pat_w) // 2
-        top = (self.height - pat_h) // 2
-
-        right_margin = self.width - (left + pat_w)
-        bottom_margin = self.height - (top + pat_h)
-        if left < margin or top < margin or right_margin < margin or bottom_margin < margin:
-            print(
-                "Error: Could not place '42' safely away from borders. "
-                "Skipping '42' pattern."
-            )
-            return False
-
-        for by in range(base_h):
-            for bx in range(base_w):
-                if base_42[by][bx] != 1:
-                    continue
-                for dy in range(k):
-                    for dx in range(k):
-                        x = left + bx * k + dx
-                        y = top + by * k + dy
-                        self.blocked[y][x] = True
-
-        return True
-
-    def _apply_42_walls(self) -> None:
-        """Close all walls for 42 cells and keep wall coherence."""
-        for y in range(self.height):
-            for x in range(self.width):
-                if not self.blocked[y][x]:
+            for dx, dy, b_curr, _b_next in DIRS:
+                if (cell_value & (1 << b_curr)) != 0:
                     continue
 
-                self.grid[y][x] = ALL_WALLS
+                nx, ny = x + dx, y + dy
+                if not self.grid.in_bounds(nx, ny):
+                    continue
+                if visited[ny][nx]:
+                    continue
+                if self.blocked[ny][nx]:
+                    continue
 
-                if y > 0:
-                    self.grid[y - 1][x] |= (1 << 2)
-                if x < self.width - 1:
-                    self.grid[y][x + 1] |= (1 << 3)
-                if y < self.height - 1:
-                    self.grid[y + 1][x] |= (1 << 0)
-                if x > 0:
-                    self.grid[y][x - 1] |= (1 << 1)
+                visited[ny][nx] = True
+                count += 1
+                queue.append((nx, ny))
 
-    def _get_neighbors(self, x: int, y: int) -> List[Tuple[int, int, int, int]]:
-        """Return unvisited, non-blocked neighbors with wall-bit info."""
-        neighbors: List[Tuple[int, int, int, int]] = []
-
-        if y > 0 and not self.visited[y - 1][x] and not self.blocked[y - 1][x]:
-            neighbors.append((x, y - 1, 0, 2))  # North
-
-        if (
-            x < self.width - 1
-            and not self.visited[y][x + 1]
-            and not self.blocked[y][x + 1]
-        ):
-            neighbors.append((x + 1, y, 1, 3))  # East
-
-        if (
-            y < self.height - 1
-            and not self.visited[y + 1][x]
-            and not self.blocked[y + 1][x]
-        ):
-            neighbors.append((x, y + 1, 2, 0))  # South
-
-        if x > 0 and not self.visited[y][x - 1] and not self.blocked[y][x - 1]:
-            neighbors.append((x - 1, y, 3, 1))  # West
-
-        return neighbors
+        return count == len(free_cells)
 
     def generate(self, margin: int = 1) -> None:
-        """
-        Generate the maze using iterative DFS starting from ENTRY.
+        """Run the full maze generation pipeline."""
+        self.blocked = Mask42Builder(margin=margin).build(
+            self.width,
+            self.height,
+        )
 
-        Note:
-            PERFECT and OUTPUT_FILE are stored here for later steps
-            (loop-handling + writing output file). :contentReference[oaicite:2]{index=2}
-        """
         start_x, start_y = self.entry
-
-        self._build_42_mask(margin=margin)
+        exit_x, exit_y = self.exit
 
         if self.blocked[start_y][start_x]:
             raise ValueError("ENTRY is inside the '42' pattern.")
-
-        if self.blocked[self.exit[1]][self.exit[0]]:
+        if self.blocked[exit_y][exit_x]:
             raise ValueError("EXIT is inside the '42' pattern.")
 
-        self.grid = [
-            [ALL_WALLS for _ in range(self.width)] for _ in range(self.height)
-        ]
-        self.visited = [
-            [False for _ in range(self.width)] for _ in range(self.height)
-        ]
+        self.grid.reset()
+        self._carver.carve(self.grid, start_x, start_y, self.blocked)
 
-        self._dfs_iterative(start_x, start_y)
-        self._apply_42_walls()
+        if not self._check_connectivity():
+            raise RuntimeError(
+                "Maze connectivity error: some free cells are unreachable."
+            )
 
-    def _dfs_iterative(self, start_x: int, start_y: int) -> None:
-        """Iterative DFS (stack-based) to avoid recursion depth issues."""
-        self.visited[start_y][start_x] = True
-        stack: List[Tuple[int, int]] = [(start_x, start_y)]
+        if not self.perfect:
+            self._loop_adder.add_loops(self.grid, self.blocked)
 
-        while stack:
-            x, y = stack[-1]
+    def solve(self) -> Optional[str]:
+        """Return one shortest valid solution."""
+        solver = MazeSolver(
+            grid=self.grid.cells,
+            entry=self.entry,
+            exit_=self.exit,
+            blocked=self.blocked,
+        )
+        return solver.solve()
 
-            neighbors = self._get_neighbors(x, y)
-            random.shuffle(neighbors)
-
-            if not neighbors:
-                stack.pop()
-                continue
-
-            nx, ny, b_curr, b_next = neighbors[0]
-
-            self.grid[y][x] &= ~(1 << b_curr)
-            self.grid[ny][nx] &= ~(1 << b_next)
-
-            self.visited[ny][nx] = True
-            stack.append((nx, ny))
+    def get_solution(self) -> Optional[str]:
+        """Return one shortest valid solution."""
+        return self.solve()
 
     def to_hex_string(self) -> str:
-        """Convert the grid to hex lines (one row per line)."""
-        return "\n".join(
-            "".join(format(cell, "x") for cell in row) for row in self.grid
-        )
+        """Return the maze grid as hexadecimal rows."""
+        return self.grid.to_hex_string()
 
     def get_grid(self) -> List[List[int]]:
-        """Return the maze grid."""
-        return self.grid
+        """Return the raw maze grid."""
+        return [row[:] for row in self.grid.cells]
+
+    def get_blocked_mask(self) -> List[List[bool]]:
+        """Return the blocked '42' mask."""
+        return [row[:] for row in self.blocked]
+
+    def build_output_text(self) -> str:
+        """Return the text content expected by the project output."""
+        solution = self.solve()
+        if solution is None:
+            raise RuntimeError("No valid solution exists for this maze.")
+
+        entry_line = f"{self.entry[0]},{self.entry[1]}"
+        exit_line = f"{self.exit[0]},{self.exit[1]}"
+        return (
+            f"{self.to_hex_string()}\n\n"
+            f"{entry_line}\n"
+            f"{exit_line}\n"
+            f"{solution}\n"
+        )
