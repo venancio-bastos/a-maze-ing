@@ -8,19 +8,15 @@ This project is a maze generator and solver, built in Python using MiniLibX (MLX
 
 To ensure that the project runs in a clean environment, we use a virtual environment (`venv`). Follow the steps below:
 
-### 1. Create and activate the virtual environment
+### 1. Quick Start (Automated Setup)
 
-Open the terminal at the root of the project and run:
+The easiest and fastest way to play is by using our `Makefile`. It will automatically create the virtual environment, install the MLX package, and launch the game.
+
+Just open your terminal at the root of the project and run:
 ```bash
-# Create the virtual environment in the “venv” folder
-python3 -m venv venv
-
-# Activate the virtual environment
-source venv/bin/activate
+make run
 ```
 
-### 2. Install MiniLibX using venv
-Open the terminal after activate venv and run this command at the root of the project:
+To clean up the environment run:
 ```bash
-pip install mlx-2.2-py3-none-any.whl
-```
+make clean || make fclean

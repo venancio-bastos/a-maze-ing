@@ -1,8 +1,8 @@
 VENV = venv
 PYTHON = $(VENV)/bin/python
 PIP = $(VENV)/bin/pip
+WHEEL = mlx-2.2-py3-none-any.whl
 CONFIG = config.txt
-UNAME_S := $(shell uname -s)
 
 .PHONY: all run clean fclean re setup
 
@@ -10,21 +10,15 @@ all: setup
 
 setup: $(VENV)/touchfile
 
-$(VENV)/touchfile: pyproject.toml
+$(VENV)/touchfile: pyproject.toml $(WHEEL)
 	@echo "Creating Virtual Environment..."
 	python3 -m venv $(VENV)
 	@echo "Updating pip..."
-	$(PIP) install --upgrade pip setuptools wheel
-	@echo "Installing base project..."
+	$(PIP) install --upgrade pip
+	@echo "Installing base project (.toml)..."
 	$(PIP) install .
-
-ifeq ($(UNAME_S),Darwin)
-	@echo "macOS detected - skipping incompatible mlx wheel."
-else
-	@echo "Installing MiniLibX wheel..."
-	$(PIP) install mlx-2.2-py3-none-any.whl --force-reinstall
-endif
-
+	@echo "Installing MiniLibX..."
+	$(PIP) install $(WHEEL) --force-reinstall
 	@touch $(VENV)/touchfile
 	@echo "Ready"
 
@@ -38,6 +32,7 @@ clean:
 	rm -rf mazegen/__pycache__
 	rm -rf build dist *.egg-info
 	rm -rf src/*.egg-info
+	rm maze_output.txt
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 fclean: clean
