@@ -49,3 +49,25 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+"""
+from MazeGen.generator import MazeGenerator
+
+generator = MazeGenerator(
+    width=5,
+    height=7,
+    entry=(0, 0),
+    exit_=(4, 6),
+    output_file="maze.txt",
+    perfect=True,
+    seed=42,
+)
+
+generator.generate()
+text = generator.build_output_text()
+
+with open(generator.output_file, "w", encoding="utf-8") as f:
+    f.write(text)
+
+"""
