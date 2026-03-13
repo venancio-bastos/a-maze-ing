@@ -718,3 +718,39 @@ This project builds a reusable maze generator package that follows the subject r
 ```text
 This document is written by Saeedeh Asheri
 ```
+
+# 👥 Team and Project Management
+
+## Roles
+The project was divided into two main areas to ensure a clean separation of concerns:
+* `sasheri` (Backend & Algorithms):** Responsible for the core logic, including the `MazeGenerator`, the DFS carving algorithm, the BFS solver, grid state management, and the `42` mask implementation.
+* `vebastos` (Frontend & Infrastructure):** Responsible for the graphical engine using MLX, direct memory pixel rendering, UI/keyboard controls, configuration parsing (`config.txt`), and project automation (`Makefile`).
+
+## Planning and Evolution
+We anticipated that the graphical rendering and the maze generation algorithms would be the most complex partsTherefore, we decided to work in parallel:
+1. First, we agreed on the API (how the generator would pass the grid to the visual engine).
+2. The backend was developed as an isolated, reusable package (`mazegen`).
+3. The frontend was developed using dummy data until the backend was ready.
+4. Finally, we integrated both parts and refined the visual output.
+
+## Tools Used
+**Version Control:** Git & GitHub for collaboration.
+**Environment:** Python `venv` to isolate dependencies.
+**Linters/Checkers:** `flake8` for PEP 8 compliance and `mypy` for static type checking.
+**Graphics:** `mlx` (MiniLibX) for rendering.
+
+---
+
+# 📚 Resources and AI Usage
+
+## Resources
+During the development of this project, we relied on several classic computer science resources:
+* Python 3 official documentation (especially for bitwise operations and file handling).
+* Graph Theory tutorials for understanding Depth-First Search (DFS) for maze generation and Breadth-First Search (BFS) for finding the shortest path.
+* MiniLibX documentation and 42 student guides regarding direct memory image manipulation (`mlx_get_data_addr`).
+
+## AI Usage
+Following the 42 guidelines, AI (Google Gemini) was used as a learning assistant and pair-programming tool, rather than a code generator. Specifically, AI was used to:
+1. **Understand Low-Level Concepts:** Explain how 1D memory arrays map to 2D screen coordinates and how bitwise shifts work for injecting ARGB colors into RAM.
+2. **Code Documentation:** Help format and translate our understanding of the code into clean, PEP 257 compliant docstrings and comments to prepare for the evaluation defense.
+3. **Makefile Setup:** Assist in writing a robust Makefile that correctly complies with the strict subject rules (install, run, debug, clean, fclean, re, lint) and handles virtual environments automatically.

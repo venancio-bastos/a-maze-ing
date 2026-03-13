@@ -1,38 +1,40 @@
 VENV = venv
 PYTHON = $(VENV)/bin/python
 PIP = $(VENV)/bin/pip
-WHEEL = mlx-2.2-py3-none-any.whl
+WHEEL_MLX = mlx-2.2-py3-none-any.whl
 CONFIG = config.txt
 
-.PHONY: all run clean fclean re setup
+.PHONY: all install run debug clean fclean re lint
 
-all: setup
+all: install
 
-setup: $(VENV)/touchfile
+install: $(VENV)/touchfile
 
-$(VENV)/touchfile: pyproject.toml $(WHEEL)
+$(VENV)/touchfile: pyproject.toml $(WHEEL_MLX)
 	@echo "Creating Virtual Environment..."
 	python3 -m venv $(VENV)
 	@echo "Updating pip..."
 	$(PIP) install --upgrade pip
-	@echo "Installing base project (.toml)..."
-	$(PIP) install .
 	@echo "Installing MiniLibX..."
-	$(PIP) install $(WHEEL) --force-reinstall
+	$(PIP) install $(WHEEL_MLX) --force-reinstall
+	@echo "Installing base project..."
+	$(PIP) install .
+	@echo "Installing linters..."
+	$(PIP) install flake8 mypy
 	@touch $(VENV)/touchfile
 	@echo "Ready"
 
-run: setup
+run: install
 	@echo "Starting A-Maze-ing..."
-	$(PYTHON) -m src.a_maze_ing $(CONFIG)
+	$(PYTHON) a_maze_ing.py $(CONFIG)
+
+debug: install
+	@echo "Starting in Debug Mode..."
+	$(PYTHON) -m pdb a_maze_ing.py $(CONFIG)
 
 clean:
-	@echo "Cleaning..."
-	rm -rf src/__pycache__
-	rm -rf mazegen/__pycache__
-	rm -rf build dist *.egg-info
-	rm -rf src/*.egg-info
-	rm maze_output.txt
+	@echo "Cleaning caches..."
+	rm -rf src/__pycache__ mazegen/__pycache__ build dist *.egg-info .mypy_cache
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 fclean: clean
@@ -40,3 +42,9 @@ fclean: clean
 	rm -rf $(VENV)
 
 re: fclean all
+
+lint: install
+	@echo "Running Flake8..."
+	$(VENV)/bin/flake8 .
+	@echo "Running MyPy..."
+	$(VENV)/bin/mypy --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs .
