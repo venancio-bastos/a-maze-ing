@@ -34,7 +34,7 @@ debug: install
 
 clean:
 	@echo "Cleaning caches..."
-	rm -rf src/__pycache__ mazegen/__pycache__ build dist *.egg-info .mypy_cache
+	rm -rf src/__pycache__ mazegen/__pycache__ build dist src/*.egg-info .mypy_cache 
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 fclean: clean

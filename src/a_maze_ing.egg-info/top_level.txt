@@ -1,2 +1,0 @@
-MazeGen
-maze_app

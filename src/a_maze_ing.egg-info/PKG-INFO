@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: a-maze-ing
-Version: 1.0.0
-Summary: Um gerador e solucionador de labirintos usando MiniLibX
-Author: sasheri & vebastos
-Requires-Python: >=3.10
