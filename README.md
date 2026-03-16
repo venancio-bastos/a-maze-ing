@@ -1,660 +1,305 @@
-# Amazing
+*This project has been created as part of the 42 curriculum by sasheri, vebastos.*
 
-This part of the project creates a maze as hexadecimal cells, keeps a visible `42` pattern using fully closed cells, supports both perfect and imperfect mazes, and computes one shortest valid path from the entry to the exit.
+# A-Maze-ing
 
-The code is written as a reusable Python package. The main class is `MazeGenerator`, which handles maze creation, validation, solving, and final output formatting.
+## Description
 
----
+A-Maze-ing is a Python project that generates a random maze from a configuration file, displays it visually, and writes the generated maze to an output file using a hexadecimal wall representation. The project supports both **perfect mazes** and **imperfect mazes**, preserves a visible **“42” pattern** inside the maze using fully closed cells, and computes one **shortest valid path** from the entry to the exit.
 
-## Project goal
+The project is split into two main parts:
 
-The goal of this project is to build a maze generator that:
+- a **reusable maze generation module** that can be packaged and installed later,
+- a **visual application** that reads the configuration, generates the maze, and displays it with user interactions.
 
-- creates a valid maze grid
-- writes the maze using hexadecimal values
-- supports a perfect maze or an imperfect maze
-- keeps a visible `42` pattern inside the maze
-- guarantees that all non-blocked cells are reachable
-- finds one shortest valid path from entry to exit
-- produces output in the expected project format
+The core reusable class is `MazeGenerator`, which handles generation, validation, connectivity checks, solving, and output formatting.
 
 ---
 
-## Main idea
+## Features
 
-Each cell of the maze stores its four walls inside one hexadecimal value.
-
-The four directions are:
-
-- North
-- East
-- South
-- West
-
-Each wall is stored as one bit:
-
-- bit 0 = North
-- bit 1 = East
-- bit 2 = South
-- bit 3 = West
-
-If a bit is `1`, that wall is closed.  
-If a bit is `0`, that wall is open.
-
-So:
-
-- `15` in decimal is `1111` in binary, which means all four walls are closed
-- opening a wall means changing its bit from `1` to `0`
-
-This is the base idea of the whole project.
+- Random maze generation with optional reproducibility through a seed
+- Support for **perfect** and **imperfect** mazes
+- Hexadecimal encoding of cell walls
+- Visible **“42”** pattern made of fully closed cells
+- Validation of entry, exit, dimensions, and consistency rules
+- Shortest path computation from entry to exit
+- Visual display with interactive controls
+- Reusable Python package for future projects
 
 ---
 
-## Project structure
+## Instructions
 
-```text
-.
-├── Makefile
-├── pyproject.toml
-├── config.txt
-├── mlx-2.2-py3-none-any.whl
-├── src/
-│   ├── a_maze_ing.py
-│   └── maze_app.py
-└── MazeGen/
-    ├── __init__.py
-    ├── carver_dfs.py
-    ├── constants.py
-    ├── generator.py
-    ├── grid.py
-    ├── imperfect.py
-    ├── mask_42.py
-    └── solver.py
-```
+### Requirements
 
-## Quick Start
+- Python **3.10+**
+- A virtual environment is recommended
+- Project dependencies installed through the provided build/setup files
+- MLX available if you want to use the graphical display
 
-The easiest way to run the project with the graphical interface is using the provided `Makefile`.
+### Run the project
 
-It automatically:
-- creates a virtual environment
-- installs the required `pyproject.toml` setup
-- installs the MiniLibX (MLX) wheel
-- launches the application
-
-Run this command at the root of the project:
+The program must be executed with a configuration file:
 
 ```bash
+python3 a_maze_ing.py config.txt
+```
+
+According to the subject, `a_maze_ing.py` is the main program and the configuration file is the only argument.
+
+### Using the Makefile
+
+The project includes a `Makefile` to automate the common tasks required by the subject:
+
+```bash
+make install
 make run
+make debug
+make lint
+make clean
 ```
 
-To clean up the environment run:
+Optional strict checking:
+
 ```bash
-make clean || make fclean
+make lint-strict
 ```
 
-# Files Explanation
+### What the main script does
 
-## `a_maze_ing.py`
+The main script:
 
-This is the main entry point for the graphical application.
+1. reads the configuration file,
+2. validates and parses its values,
+3. creates the maze,
+4. writes the output file,
+5. opens the visual display.
 
-Its job is to prepare the environment before the visual engine starts.
+### Interactive controls
 
-### Main responsibilities
+The application provides at least the following interactions:
 
-- read the `config.txt` file
-- parse raw strings into proper Python data types (integers, tuples, booleans)
-- validate command-line arguments
-- instantiate and run the `MazeApp`
+- generate a new random maze,
+- show or hide the shortest path,
+- change wall colours.
+
+Extra controls may also be available depending on the implementation.
 
 ---
 
-## `maze_app.py`
+## Configuration File
 
-This file contains the `MazeApp` class.
+The configuration file must contain **one `KEY=VALUE` pair per line**.
+Lines beginning with `#` are comments and must be ignored.
 
-Its job is to handle the MiniLibX (MLX) window, render the maze to the screen, and manage keyboard events.
+### Mandatory keys
 
-### How rendering works
+| Key | Description | Example |
+|---|---|---|
+| `WIDTH` | Maze width in number of cells | `WIDTH=20` |
+| `HEIGHT` | Maze height in number of cells | `HEIGHT=15` |
+| `ENTRY` | Entry coordinates `(x,y)` | `ENTRY=0,0` |
+| `EXIT` | Exit coordinates `(x,y)` | `EXIT=19,14` |
+| `OUTPUT_FILE` | Output filename | `OUTPUT_FILE=maze.txt` |
+| `PERFECT` | Whether the maze must be perfect | `PERFECT=True` |
 
-Drawing pixel by pixel directly to the screen is slow. Instead, this class:
-1. creates an invisible image in the computer's RAM
-2. calculates the exact memory offset for each pixel using a 1D array
-3. pushes the fully drawn image to the window in one go (avoiding flickering)
+### Optional keys
 
-### Important methods
-
-#### `put_pixel(x, y, color)`
-
-Injects a 32-bit color directly into the RAM address of a specific pixel using bitwise shifts.
-
-#### `fill_area(start_x, start_y, width, height, color)`
-
-Acts as the base geometric tool. Everything on the screen (walls, background, path) is drawn as a rectangle using this method.
-
-#### `draw_maze(wall_color)`
-
-Translates the generator's grid into physical pixels. 
-It checks the bitwise values of each cell (`1` for North, `2` for East, `4` for South, `8` for West) and draws the corresponding wall rectangles. It also fills the `42` blocked mask with a solid color.
-
-#### `draw_all()`
-
-Uses the Painter's Algorithm to render the scene from back to front:
-- draws the background
-- draws the maze walls and the `42` pattern
-- draws the solution path (if enabled)
-- draws the entry and exit points on top
-
-#### `handle_key(keycode, params)`
-
-Listens for keyboard inputs to regenerate the maze, toggle the solution path, change color palettes, or exit the program cleanly.
-
-## `constants.py`
-
-This file contains shared constants used in the whole package.
-
-### Important values
-
-#### `ALL_WALLS = 15`
-
-This means a cell starts with all walls closed.
-
-#### `MAX_SCALE = 2`
-
-This limits the size of the `42` pattern when the maze is large.
-
-#### `DIRS`
-
-This defines the four directions and the matching wall bits.
-
-Each item in `DIRS` looks like this:
-
-```python
-(dx, dy, bit_current_cell, bit_next_cell)
-```
+The subject allows adding useful extra keys. In this project, an optional seed can be used for reproducibility.
 
 Example:
 
-```python
-(0, -1, 0, 2)
+```text
+SEED=42
 ```
 
-This means moving North:
+### Example default configuration
 
-- `dx = 0`
-- `dy = -1`
-- the current cell uses bit `0` for North
-- the next cell uses bit `2` for South
+```text
+# Maze dimensions
+WIDTH=20
+HEIGHT=15
 
-This keeps the wall data consistent between neighboring cells.
+# Entry and exit coordinates
+ENTRY=0,0
+EXIT=19,14
 
----
+# Output file
+OUTPUT_FILE=maze.txt
 
-## `grid.py`
+# Perfect or imperfect maze
+PERFECT=True
 
-This file contains the `MazeGrid` class.
+# Optional reproducibility seed
+SEED=42
+```
 
-Its job is to store the maze cells and provide low-level wall operations.
+### Expected format rules
 
-### Main responsibilities
+- Comments start with `#`
+- Each non-comment line must follow `KEY=VALUE`
+- Numeric fields must contain valid integers
+- `ENTRY` and `EXIT` must use the format `x,y`
+- `PERFECT` must be a valid boolean value
 
-- create the grid
-- reset all cells to fully closed
-- check if coordinates are inside the maze
-- open a wall between two cells
-- export the maze as hexadecimal text
+### Error handling
 
-### Important methods
+The program is expected to handle invalid configurations gracefully, including:
 
-#### `reset()`
-
-Fills the whole maze with `15`, meaning all walls are closed.
-
-#### `in_bounds(x, y)`
-
-Checks if a cell is inside the maze boundaries.
-
-#### `break_wall(x, y, nx, ny, b_curr, b_next)`
-
-Opens the wall between two neighboring cells.
-
-It updates both cells:
-
-- the wall bit in the current cell
-- the opposite wall bit in the next cell
-
-This is very important because wall information must stay coherent.
-
-#### `to_hex_string()`
-
-Converts the maze grid into the required hexadecimal text format.
+- missing mandatory keys,
+- invalid `KEY=VALUE` syntax,
+- letters instead of numbers,
+- invalid boolean values,
+- invalid coordinate format,
+- impossible maze parameters.
 
 ---
 
-## `carver_dfs.py`
+## Maze Representation
 
-This file contains the `DFSMazeCarver` class.
+Each maze cell is stored as **one hexadecimal digit** encoding the state of its four walls.
 
-It uses iterative DFS to carve the main maze.
+### Bit encoding
 
-DFS stands for **Depth-First Search**.
+| Bit | Direction |
+|---|---|
+| `0` | North |
+| `1` | East |
+| `2` | South |
+| `3` | West |
 
-### Why DFS is used here
+A closed wall is represented by bit value `1`, and an open wall by bit value `0`.
 
-- it is simple
-- it is a classic maze generation method
-- it creates a perfect maze structure first
-- it is easy to control with a stack
+Examples:
+
+- `F` (`1111` in binary): all four walls are closed
+- `3` (`0011` in binary): north and east walls are closed
+- `A` (`1010` in binary): east and west walls are closed
+
+The maze is written row by row in hexadecimal form.
+
+---
+
+## Output File Format
+
+The output file contains:
+
+1. the maze grid in hexadecimal form,
+2. one empty line,
+3. the entry coordinates,
+4. the exit coordinates,
+5. the shortest valid path using `N`, `E`, `S`, `W`.
+
+Example:
+
+```text
+951395139551795151151153
+EABA6E1285C3412EA828212
+C6A4816A454144A482B20A
+9A833640A395344543AE0D2
+
+1,1
+19,14
+SWSESWSSSSEEEEENEESEESSSEEEESSSEENNENEE
+```
+
+All lines must end with `\n`.
+
+---
+
+## Chosen Maze Generation Algorithm
+
+The main maze generation algorithm used in this project is **Depth-First Search (DFS)** with backtracking, implemented iteratively.
 
 ### How it works
 
-1. start from the entry cell
-2. mark the current cell as visited
-3. look for unvisited valid neighbors
-4. choose one neighbor randomly
-5. break the wall to that neighbor
-6. move forward
-7. if no neighbor exists, backtrack using the stack
+1. Start from the entry cell.
+2. Mark the current cell as visited.
+3. Randomly choose an unvisited valid neighbour.
+4. Break the wall between the current cell and the chosen neighbour.
+5. Move to that neighbour.
+6. If no unvisited neighbour exists, backtrack using a stack.
+7. Continue until all reachable valid cells have been processed.
 
-Because it only moves to unvisited cells, the first carved structure has no cycles.
+Blocked cells belonging to the `42` pattern are excluded from carving.
 
-This is why it naturally creates a perfect maze.
+### Why this algorithm was chosen
 
-Blocked cells from the `42` pattern are never carved.
+DFS was chosen because:
 
----
+- it is simple and reliable,
+- it is a classic maze generation algorithm,
+- it naturally creates a **perfect maze** structure first,
+- it works well with randomness,
+- it is easy to implement and explain during evaluation.
 
-## `imperfect.py`
-
-This file contains the `LoopAdder` class.
-
-Its job is to make the maze imperfect by opening extra walls after DFS carving is finished.
-
-A perfect maze has only one unique path between two cells.
-
-An imperfect maze has extra connections, so loops can appear.
-
-### How loops are added
-
-1. choose a random cell
-2. choose a random direction
-3. check that the wall is currently closed
-4. open that wall
-5. verify that this does not create a forbidden fully open `3x3` area
-6. keep the change if valid, otherwise undo it
-
-### Important idea
-
-Adding a loop means opening an extra closed wall between two cells.
-
-It does not mean drawing a special shape directly.
-
-It means creating one more connection in the maze graph, which creates a cycle.
-
-### Why the `3x3` check is needed
-
-The subject does not allow a fully open `3x3` area.
-
-So after opening a wall, the code checks nearby `3x3` zones.
-
-If the new opening would create a full open `3x3` block, the wall is closed again.
-
-This keeps the maze valid.
+For **imperfect mazes**, extra walls are opened afterward to create loops while still respecting the project constraints.
 
 ---
 
-## `mask_42.py`
+## Solving Algorithm
 
-This file contains the `Mask42Builder` class.
+The shortest path is computed with **Breadth-First Search (BFS)**.
 
-Its job is to create the `42` pattern inside the maze.
+### Why BFS was chosen
 
-The pattern is stored as blocked cells:
+BFS is the right choice here because the maze graph is unweighted. It guarantees one **shortest valid path** between the entry and exit.
 
-- `True` means the cell belongs to the `42`
-- `False` means the cell is free
-
-Blocked cells are never carved, so they stay fully closed.
-
-This is how the visible `42` is preserved in the final maze.
-
-### Important steps
-
-1. define a base `42` pattern
-2. check if the maze is large enough
-3. compute a safe scale
-4. center the pattern inside the maze
-5. mark the pattern cells as blocked
-
-If the maze is too small, the code skips the pattern and prints a warning.
-
-This matches the subject requirement that the pattern may be removed safely for very small mazes.
-
----
-
-## `solver.py`
-
-This file contains the `MazeSolver` class.
-
-It finds one shortest valid path from entry to exit.
-
-It uses BFS, which means **Breadth-First Search**.
-
-### Why BFS is used
-
-- the maze graph is unweighted
-- BFS guarantees a shortest path in an unweighted graph
-
-### How it works
-
-1. start from the entry
-2. explore all reachable neighbors layer by layer
-3. store where each cell came from
-4. stop when the exit is reached
-5. rebuild the path by walking backward from exit to entry
-
-The returned path is written as letters:
+The returned path is encoded using the required direction letters:
 
 - `N`
 - `E`
 - `S`
 - `W`
 
-Blocked cells from the `42` mask are ignored during solving.
+---
+
+## The “42” Pattern
+
+The maze must visually contain a **“42”** pattern.
+In this project, the pattern is implemented using **fully closed blocked cells**.
+
+That means:
+
+- these cells are never carved by the generator,
+- they are never used by the solver,
+- they remain visible in the displayed maze.
+
+If the maze is too small to contain the pattern, the project prints a message on the terminal, which is allowed by the subject.
 
 ---
 
-## `generator.py`
+## Reusable Module Documentation
 
-This is the main file of the project.
+A reusable module is provided as a Python package named `mazegen-*`, located at the root of the repository as a build artifact (`.tar.gz` or `.whl`).
 
-It contains the `MazeGenerator` class, which is the reusable public interface of the package.
+### What part is reusable
 
-This class combines all the other parts:
-
-- grid creation
-- `42` pattern building
-- DFS carving
-- optional loop addition
-- connectivity checking
-- solving
-- output text generation
-
-### Important methods
-
-#### `__init__(...)`
-
-Stores the maze settings:
-
-- width
-- height
-- entry
-- exit
-- output file name
-- perfect or imperfect mode
-- optional random seed
-
-It also validates the inputs.
-
-#### `_validate(...)`
-
-Checks that:
-
-- width and height are positive integers
-- entry and exit are valid coordinates
-- entry and exit are different
-- the output file name is valid
-- the perfect flag is boolean
-
-#### `_check_connectivity()`
-
-Runs a BFS from the entry to confirm that all free cells are reachable.
-
-This is important because the maze must not contain isolated usable cells.
-
-#### `generate(margin=1)`
-
-Runs the full generation pipeline:
-
-1. build the `42` mask
-2. verify that entry and exit are not inside the pattern
-3. reset the grid
-4. carve the maze with DFS
-5. check connectivity
-6. if the maze is imperfect, add loops
-
-#### `solve()`
-
-Uses `MazeSolver` to get one shortest valid solution.
-
-#### `to_hex_string()`
-
-Returns the maze grid as hexadecimal rows.
-
-#### `build_output_text()`
-
-Builds the final text exactly in the required output format.
-
----
-
-## `__init__.py`
-
-This file makes the package easier to import.
-
-It exports:
-
-- `MazeGenerator`
-- `MazeSolver`
-
-So the package has a clean public interface.
-
----
-
-# How the Maze Is Generated
-
-The full generation process is:
-
-1. create a grid where all cells are fully closed
-2. build the blocked `42` mask
-3. start DFS from the entry cell
-4. carve paths only through non-blocked cells
-5. confirm that every free cell is reachable
-6. if imperfect mode is requested, open some extra walls
-7. solve the maze with BFS
-8. export the final text
-
----
-
-# Perfect vs Imperfect Maze
-
-## Perfect Maze
-
-A perfect maze has:
-
-- no cycles
-- exactly one unique path between reachable cells
-
-In this project, the DFS carved structure is the perfect base maze.
-
-## Imperfect Maze
-
-An imperfect maze allows:
-
-- loops
-- more than one possible route between some cells
-
-In this project, imperfect mode is created by opening extra closed walls after DFS carving.
-
----
-
-# About Loops
-
-A common question is: what does "adding a loop" really mean?
-
-It means opening one extra wall between two neighboring cells that were not directly connected before.
-
-That new connection creates a cycle in the maze graph.
-
-So yes, in simple words:
-
-- adding a loop means breaking or opening an extra wall
-
-But this is done carefully:
-
-- only between valid neighbors
-- not through blocked `42` cells
-- not if it creates a forbidden fully open `3x3` area
-
----
-
-# About the `42` Pattern
-
-The `42` pattern is not drawn as decoration.
-
-It is made using fully closed blocked cells.
-
-This means:
-
-- DFS never carves these cells
-- loop addition never opens them
-- BFS never walks through them
-
-As a result, the `42` shape remains visible inside the maze.
-
-If the maze is too small, the pattern is skipped with a warning.
-
----
-
-# Output Format
-
-The final output text looks like this:
-
-```text
-<maze in hexadecimal rows>
-
-<entry_x>,<entry_y>
-<exit_x>,<exit_y>
-<solution>
-```
-
-Example:
-
-```text
-ffff
-a53c
-98ef
-
-0,0
-3,2
-EESSWN
-```
-
-### Meaning
-
-1. the maze is written row by row in hexadecimal
-2. then one empty line
-3. then the entry coordinates
-4. then the exit coordinates
-5. then one shortest valid path using `N`, `E`, `S`, `W`
-
----
-
-# Reusability
-
-The code is designed to be reusable.
-
-The main reusable class is:
+The reusable part is the maze generator package centered around the class:
 
 ```python
 MazeGenerator
 ```
 
-This makes the project easier to:
+This reusable module provides:
 
-- test
-- extend
-- import into another script
-- separate from a command-line interface if needed later
+- maze generation,
+- input validation,
+- connectivity checks,
+- shortest-path solving,
+- output text generation,
+- access to the internal generated maze structure.
 
-This is better than putting all logic in one long script.
+### Why it is reusable
 
----
+The maze logic is separated from the visual interface. This means the generator can later be:
 
-# Validation and Safety
+- imported into another Python project,
+- tested independently,
+- reused with another interface,
+- packaged and installed with `pip`.
 
-The project includes several checks to avoid invalid mazes.
-
-Examples:
-
-- width and height must be positive
-- entry and exit must be inside the maze
-- entry and exit must be different
-- entry and exit must not be inside the `42` pattern
-- grid must stay coherent between neighboring cells
-- all free cells must be reachable
-- fully open `3x3` areas are prevented in imperfect mode
-
-These checks make the generator more robust.
-
----
-
-# Why These Algorithms Were Chosen
-
-## DFS for generation
-
-DFS is a very common maze generation algorithm because:
-
-- it is simple to implement
-- it creates natural maze paths
-- it produces a perfect maze structure first
-- it works well with randomness
-
-## BFS for solving
-
-BFS is used because:
-
-- the maze acts like an unweighted graph
-- BFS guarantees a shortest path
-- it is easy to reconstruct the path afterward
-
----
-
-# Important Concepts Used in the Code
-
-## Bitwise representation
-
-Each cell uses four bits to store four walls.
-
-This is compact and efficient.
-
-## Graph thinking
-
-The maze can be seen as a graph:
-
-- cells are nodes
-- open walls are edges
-
-DFS builds the graph.  
-BFS solves the graph.  
-Loop addition adds extra edges.
-
-## Masking
-
-The `42` pattern is implemented as a blocked mask, which is a clean way to protect special cells during generation and solving.
-
-## Reproducibility
-
-The generator uses `random.Random(seed)`.
-
-This means:
-
-- same seed gives the same maze
-- this is useful for testing and debugging
-
----
-
-# Example Usage
+### Basic example
 
 ```python
 from amazing import MazeGenerator
@@ -670,87 +315,173 @@ generator = MazeGenerator(
 )
 
 generator.generate()
+solution = generator.solve()
 text = generator.build_output_text()
 
-with open(generator.output_file, "w", encoding="utf-8") as f:
-    f.write(text)
+print(solution)
+print(text)
 ```
 
-For an imperfect maze:
+### Passing custom parameters
+
+You can customize at least:
+
+- `width`
+- `height`
+- `entry`
+- `exit_`
+- `output_file`
+- `perfect`
+- `seed`
+
+### Accessing the generated data
+
+After generation, the module gives access to:
+
+- the maze structure,
+- the generated hexadecimal representation,
+- the computed solution path.
+
+Typical usage includes methods such as:
 
 ```python
-from amazing import MazeGenerator
-
-generator = MazeGenerator(
-    width=20,
-    height=12,
-    entry=(0, 0),
-    exit_=(19, 11),
-    output_file="maze.txt",
-    perfect=False,
-    seed=42,
-)
-
 generator.generate()
-text = generator.build_output_text()
-
-with open(generator.output_file, "w", encoding="utf-8") as f:
-    f.write(text)
+hex_maze = generator.to_hex_string()
+solution = generator.solve()
+output_text = generator.build_output_text()
 ```
 
 ---
 
-# Summary
-
-This project builds a reusable maze generator package that follows the subject requirements.
-
-### Main points
-
-- the maze is stored using hexadecimal wall encoding
-- DFS is used to carve the main maze
-- BFS is used to find one shortest solution
-- the `42` pattern is kept using blocked fully closed cells
-- imperfect mode adds loops by opening extra walls
-- forbidden open `3x3` areas are avoided
-- connectivity is checked to keep the maze valid
-- the final output is generated in the required format
+## Project Structure
 
 ```text
-This document is written by Saeedeh Asheri
+.
+├── README.md
+├── a_maze_ing.py
+├── mazegen.tar.gz
+├── config.txt
+├── Makefile
+├── pyproject.toml
+├── src/
+│   └── maze_app.py
+└── MazeGen/
+    ├── __init__.py
+    ├── carver_dfs.py
+    ├── constants.py
+    ├── generator.py
+    ├── grid.py
+    ├── imperfect.py
+    ├── mask_42.py
+    └── solver.py
 ```
-
-# 👥 Team and Project Management
-
-## Roles
-The project was divided into two main areas to ensure a clean separation of concerns:
-* `sasheri` (Backend & Algorithms):** Responsible for the core logic, including the `MazeGenerator`, the DFS carving algorithm, the BFS solver, grid state management, and the `42` mask implementation.
-* `vebastos` (Frontend & Infrastructure):** Responsible for the graphical engine using MLX, direct memory pixel rendering, UI/keyboard controls, configuration parsing (`config.txt`), and project automation (`Makefile`).
-
-## Planning and Evolution
-We anticipated that the graphical rendering and the maze generation algorithms would be the most complex partsTherefore, we decided to work in parallel:
-1. First, we agreed on the API (how the generator would pass the grid to the visual engine).
-2. The backend was developed as an isolated, reusable package (`mazegen`).
-3. The frontend was developed using dummy data until the backend was ready.
-4. Finally, we integrated both parts and refined the visual output.
-
-## Tools Used
-**Version Control:** Git & GitHub for collaboration.
-**Environment:** Python `venv` to isolate dependencies.
-**Linters/Checkers:** `flake8` for PEP 8 compliance and `mypy` for static type checking.
-**Graphics:** `mlx` (MiniLibX) for rendering.
 
 ---
 
-# 📚 Resources and AI Usage
+## Team and Project Management
+
+### Roles of each team member
+
+- **sasheri**: backend and algorithms — maze generation logic, DFS carving, BFS solver, grid consistency, `42` mask, validation, and output generation.
+- **vebastos**: frontend and infrastructure — visual rendering with MLX, keyboard controls, configuration parsing, application integration, and automation through the `Makefile`.
+
+### Anticipated planning and how it evolved
+
+At the beginning, we expected the project to have two main difficult areas:
+
+- the **maze generation logic**,
+- the **visual rendering and interaction layer**.
+
+Because of that, we planned the work in parallel:
+
+1. define the interface between the generator and the display,
+2. implement the reusable generator package,
+3. implement the visual application using temporary test data,
+4. integrate both parts,
+5. refine the rendering, configuration parsing, and output format.
+
+This plan worked well overall, but during integration we had to spend more time than expected aligning the generator output with the display layer and making the configuration and packaging flow cleaner.
+
+### What worked well
+
+- clear separation between backend and frontend,
+- reusable package design,
+- use of classical graph algorithms that are easy to test and explain,
+- parallel work organization,
+- configuration-driven execution.
+
+### What could be improved
+
+- more automated tests for edge cases,
+- earlier full integration testing,
+- more detailed user documentation for controls and package installation,
+- additional validation scenarios for malformed configuration files.
+
+### Specific tools used
+
+- **Git / GitHub** for collaboration and version control,
+- **Python `venv`** for isolated environments,
+- **flake8** for style checking,
+- **mypy** for static type checking,
+- **MiniLibX (MLX)** for the graphical display,
+- **Makefile** for project automation.
+
+---
 
 ## Resources
-During the development of this project, we relied on several classic computer science resources:
-* Python 3 official documentation (especially for bitwise operations and file handling).
-* Graph Theory tutorials for understanding Depth-First Search (DFS) for maze generation and Breadth-First Search (BFS) for finding the shortest path.
-* MiniLibX documentation and 42 student guides regarding direct memory image manipulation (`mlx_get_data_addr`).
 
-## AI Usage
-Following the 42 guidelines, AI (Google Gemini) was used as a learning assistant and pair-programming tool, rather than a code generator. Specifically, AI was used to:
-1. **Understand Low-Level Concepts:** Explain how 1D memory arrays map to 2D screen coordinates and how bitwise shifts work for injecting ARGB colors into RAM.
-2. **Code Documentation:** Help format and translate our understanding of the code into clean, PEP 257 compliant docstrings and comments to prepare for the evaluation defense.
-3. **Makefile Setup:** Assist in writing a robust Makefile that correctly complies with the strict subject rules (install, run, debug, clean, fclean, re, lint) and handles virtual environments automatically.
+### Classic references
+
+- Python official documentation
+- Documentation and tutorials about **Depth-First Search (DFS)**
+- Documentation and tutorials about **Breadth-First Search (BFS)**
+- Graph theory references on spanning trees and shortest paths
+- MiniLibX documentation and 42 student resources
+
+### How AI was used
+
+AI was used as a **learning and support tool**, not as a replacement for understanding the code.
+
+It was used for the following tasks:
+
+- clarifying low-level concepts such as bitwise wall encoding and pixel memory access,
+- helping explain graph algorithm ideas used in the project,
+- improving wording and formatting of documentation,
+- assisting with the organization of the `Makefile` and development workflow,
+- supporting code comments and explanation drafts before peer review.
+
+All AI-generated suggestions were reviewed, tested, and discussed by the team before being kept.
+
+---
+
+## Technical Choices
+
+### Perfect and imperfect modes
+
+The project first generates a perfect maze using DFS. If `PERFECT=False`, additional walls are opened to create loops while keeping the maze valid.
+
+### Connectivity guarantees
+
+The code checks that all reachable non-blocked cells remain connected.
+
+### Prevention of invalid open areas
+
+The project avoids creating a fully open `3x3` zone, in order to respect the subject rule that corridors cannot be wider than 2 cells.
+
+### Reproducibility
+
+When a seed is provided, the same configuration generates the same maze again, which is useful for testing and debugging.
+
+---
+
+## Summary
+
+A-Maze-ing is a maze generator and visualizer written in Python. It follows the 42 subject requirements by:
+
+- reading a configuration file,
+- generating a valid maze,
+- displaying it visually,
+- writing the maze to a hexadecimal output file,
+- computing a shortest path,
+- keeping a visible `42` pattern,
+- providing a reusable package for future projects.

@@ -5,10 +5,14 @@ from src.maze_app import MazeApp
 
 def parse_config(filename: str) -> Dict[str, Any]:
     """
-    Reads the config file and converts the string values
-    into their proper Python types.
+    Reads the config file, validates formatting strictly, 
+    and converts string values into proper Python types.
     """
     config: Dict[str, Any] = {}
+    mandatory_keys = [
+        'WIDTH', 'HEIGHT', 'ENTRY', 'EXIT', 'OUTPUT_FILE', 'PERFECT'
+    ]
+
     try:
         with open(filename, 'r') as f:
             for line in f:
@@ -17,25 +21,48 @@ def parse_config(filename: str) -> Dict[str, Any]:
                 if not line or line.startswith('#'):
                     continue
 
-                key, val = line.split('=')
-                key = key.strip()
+                if '=' not in line:
+                    raise ValueError(f"Invalid format (missing '='): '{line}'")
+
+                key, val = line.split('=', 1)
+                key = key.strip().upper()
                 val = val.strip()
 
-                # Convert values to the correct types based on the key
                 if key in ['WIDTH', 'HEIGHT']:
+                    if not val.isdigit():
+                        raise ValueError(f"{key} must be an integer.")
                     config[key] = int(val)
+                
                 elif key in ['ENTRY', 'EXIT']:
                     coords = val.split(',')
-                    config[key] = (
-                        int(coords[0].strip()), int(coords[1].strip())
-                    )
+                    if len(coords) != 2:
+                        raise ValueError(f"{key} must be a valid 'x,y' tuple.")
+                    try:
+                        config[key] = (
+                            int(coords[0].strip()), int(coords[1].strip())
+                        )
+                    except ValueError:
+                        raise ValueError(f"Coordinates for {key} must be integers.")
+                
                 elif key == 'PERFECT':
+                    if val.lower() not in ['true', 'false']:
+                        raise ValueError("PERFECT must be 'True' or 'False'.")
                     config[key] = val.lower() == 'true'
-                elif key == 'OUTPUT_FILE':
+                
+                else:
                     config[key] = val
-    except Exception as e:
-        print(f"Error reading config file: {e}")
+
+        for m_key in mandatory_keys:
+            if m_key not in config:
+                raise ValueError(f"Missing mandatory configuration: '{m_key}'")
+
+    except FileNotFoundError:
+        print(f"Error: The configuration file '{filename}' was not found.")
         sys.exit(1)
+    except Exception as e:
+        print(f"Configuration Error: {e}")
+        sys.exit(1)
+
     return config
 
 
@@ -48,8 +75,12 @@ def main() -> None:
     config: Dict[str, Any] = parse_config(config_file)
 
     # Pass the entire config dictionary to the MazeApp
-    app = MazeApp(800, 600, "A-Maze-ing", config)
-    app.run()
+    try:
+        app = MazeApp(800, 600, "A-Maze-ing", config)
+        app.run()
+    except Exception as e:
+        print(f"Maze Generation error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
