@@ -1,7 +1,7 @@
 import random
 from typing import Any, List, Dict, Tuple
 from mlx import Mlx
-from src.MazeGen import MazeGenerator
+from src.mazegen import MazeGenerator
 
 
 class MazeApp:

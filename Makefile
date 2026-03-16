@@ -45,6 +45,6 @@ re: fclean all
 
 lint: install
 	@echo "Running Flake8..."
-	$(VENV)/bin/flake8 .
+	$(VENV)/bin/flake8 --exclude=$(VENV),build,dist .
 	@echo "Running MyPy..."
-	$(VENV)/bin/mypy --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs .
+	$(VENV)/bin/mypy --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs --explicit-package-bases --exclude 'venv|build|dist' .
