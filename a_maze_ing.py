@@ -5,7 +5,7 @@ from src.maze_app import MazeApp
 
 def parse_config(filename: str) -> Dict[str, Any]:
     """
-    Reads the config file, validates formatting strictly, 
+    Reads the config file, validates formatting strictly,
     and converts string values into proper Python types.
     """
     config: Dict[str, Any] = {}
@@ -32,7 +32,6 @@ def parse_config(filename: str) -> Dict[str, Any]:
                     if not val.isdigit():
                         raise ValueError(f"{key} must be an integer.")
                     config[key] = int(val)
-                
                 elif key in ['ENTRY', 'EXIT']:
                     coords = val.split(',')
                     if len(coords) != 2:
@@ -42,13 +41,13 @@ def parse_config(filename: str) -> Dict[str, Any]:
                             int(coords[0].strip()), int(coords[1].strip())
                         )
                     except ValueError:
-                        raise ValueError(f"Coordinates for {key} must be integers.")
-                
+                        raise ValueError(
+                            f"Coordinates for {key} must be integers."
+                        )
                 elif key == 'PERFECT':
                     if val.lower() not in ['true', 'false']:
                         raise ValueError("PERFECT must be 'True' or 'False'.")
                     config[key] = val.lower() == 'true'
-                
                 else:
                     config[key] = val
 
