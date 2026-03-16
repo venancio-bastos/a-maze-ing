@@ -348,7 +348,8 @@ class MazeApp:
         # 3. Draw the path if the user pressed '2'
         if self.show_path:
             self.draw_path(theme["path"])
-            self.draw_endpoints()
+
+        self.draw_endpoints()
 
     def handle_key(self, keycode: int, params: Any) -> int:
         """

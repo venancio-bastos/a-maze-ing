@@ -13,6 +13,10 @@ def parse_config(filename: str) -> Dict[str, Any]:
         with open(filename, 'r') as f:
             for line in f:
                 line = line.strip()
+
+                if not line or line.startswitch('#'):
+                    continue
+
                 key, val = line.split('=')
                 key = key.strip()
                 val = val.strip()
