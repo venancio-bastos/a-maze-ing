@@ -14,7 +14,7 @@ def parse_config(filename: str) -> Dict[str, Any]:
             for line in f:
                 line = line.strip()
 
-                if not line or line.startswitch('#'):
+                if not line or line.startswith('#'):
                     continue
 
                 key, val = line.split('=')
