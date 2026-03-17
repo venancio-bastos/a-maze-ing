@@ -5,9 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mazegen"
 version = "1.0.0"
-description = "Um gerador e solucionador de labirintos usando MiniLibX"
+description = "Reusable maze generator and solver package for the 42 A-Maze-ing project"
 authors = [
-    { name = "sasheri & vebastos" }
+    { name = "sasheri" },
+    { name = "vebastos" }
 ]
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
+
+[tool.setuptools]
+packages = ["MazeGen"]
+include-package-data = true

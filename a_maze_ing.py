@@ -1,84 +1,108 @@
 import sys
-from typing import Dict, Any
+from typing import Any, Dict
+
 from src.maze_app import MazeApp
 
 
+MANDATORY_KEYS = [
+    "WIDTH",
+    "HEIGHT",
+    "ENTRY",
+    "EXIT",
+    "OUTPUT_FILE",
+    "PERFECT",
+]
+OPTIONAL_KEYS = ["SEED"]
+ALLOWED_KEYS = set(MANDATORY_KEYS + OPTIONAL_KEYS)
+
+
 def parse_config(filename: str) -> Dict[str, Any]:
-    """
-    Reads the config file, validates formatting strictly,
-    and converts string values into proper Python types.
-    """
+    """Parse and validate the configuration file."""
     config: Dict[str, Any] = {}
-    mandatory_keys = [
-        'WIDTH', 'HEIGHT', 'ENTRY', 'EXIT', 'OUTPUT_FILE', 'PERFECT'
-    ]
 
     try:
-        with open(filename, 'r') as f:
-            for line in f:
-                line = line.strip()
+        with open(filename, "r", encoding="utf-8") as file:
+            for raw_line in file:
+                line = raw_line.strip()
 
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
-                if '=' not in line:
+                if "=" not in line:
                     raise ValueError(f"Invalid format (missing '='): '{line}'")
 
-                key, val = line.split('=', 1)
+                key, value = line.split("=", 1)
                 key = key.strip().upper()
-                val = val.strip()
+                value = value.strip()
 
-                if key in ['WIDTH', 'HEIGHT']:
-                    if not val.isdigit():
-                        raise ValueError(f"{key} must be an integer.")
-                    config[key] = int(val)
-                elif key in ['ENTRY', 'EXIT']:
-                    coords = val.split(',')
+                if key not in ALLOWED_KEYS:
+                    raise ValueError(f"Unknown configuration key: '{key}'")
+                if key in config:
+                    raise ValueError(f"Duplicate configuration key: '{key}'")
+
+                if key in ["WIDTH", "HEIGHT"]:
+                    try:
+                        config[key] = int(value)
+                    except ValueError as exc:
+                        raise ValueError(f"{key} must be an integer.") from exc
+                elif key in ["ENTRY", "EXIT"]:
+                    coords = value.split(",")
                     if len(coords) != 2:
-                        raise ValueError(f"{key} must be a valid 'x,y' tuple.")
+                        raise ValueError(f"{key} must use the format x,y.")
                     try:
                         config[key] = (
-                            int(coords[0].strip()), int(coords[1].strip())
+                            int(coords[0].strip()),
+                            int(coords[1].strip()),
                         )
-                    except ValueError:
+                    except ValueError as exc:
                         raise ValueError(
                             f"Coordinates for {key} must be integers."
-                        )
-                elif key == 'PERFECT':
-                    if val.lower() not in ['true', 'false']:
+                        ) from exc
+                elif key == "PERFECT":
+                    lowered = value.lower()
+                    if lowered not in ["true", "false"]:
                         raise ValueError("PERFECT must be 'True' or 'False'.")
-                    config[key] = val.lower() == 'true'
+                    config[key] = lowered == "true"
+                elif key == "SEED":
+                    try:
+                        config[key] = int(value)
+                    except ValueError as exc:
+                        raise ValueError("SEED must be an integer.") from exc
                 else:
-                    config[key] = val
+                    if not value:
+                        raise ValueError(f"{key} cannot be empty.")
+                    config[key] = value
 
-        for m_key in mandatory_keys:
-            if m_key not in config:
-                raise ValueError(f"Missing mandatory configuration: '{m_key}'")
+        for mandatory_key in MANDATORY_KEYS:
+            if mandatory_key not in config:
+                raise ValueError(
+                    f"Missing mandatory configuration: '{mandatory_key}'"
+                )
 
     except FileNotFoundError:
         print(f"Error: The configuration file '{filename}' was not found.")
         sys.exit(1)
-    except Exception as e:
-        print(f"Configuration Error: {e}")
+    except Exception as exc:
+        print(f"Configuration Error: {exc}")
         sys.exit(1)
 
     return config
 
 
 def main() -> None:
+    """Read the config, create the app, and launch it."""
     if len(sys.argv) != 2:
-        print("Usage: python3 -m src.a_maze_ing <config_file>")
+        print("Usage: python3 a_maze_ing.py <config_file>")
         sys.exit(1)
 
-    config_file: str = sys.argv[1]
-    config: Dict[str, Any] = parse_config(config_file)
+    config_file = sys.argv[1]
+    config = parse_config(config_file)
 
-    # Pass the entire config dictionary to the MazeApp
     try:
         app = MazeApp(800, 600, "A-Maze-ing", config)
         app.run()
-    except Exception as e:
-        print(f"Maze Generation error: {e}")
+    except Exception as exc:
+        print(f"Maze Generation error: {exc}")
         sys.exit(1)
 
 

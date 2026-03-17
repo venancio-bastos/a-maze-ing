@@ -1,3 +1,11 @@
+Metadata-Version: 2.4
+Name: mazegen
+Version: 1.0.0
+Summary: Reusable maze generator and solver package for the 42 A-Maze-ing project
+Author: sasheri, vebastos
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+
 *This project has been created as part of the 42 curriculum by sasheri, vebastos.*
 
 # A-Maze-ing
