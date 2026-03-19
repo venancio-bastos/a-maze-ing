@@ -1,7 +1,7 @@
 import sys
 from typing import Any, Dict
 
-from src.maze_app import MazeApp
+from src import MazeApp
 
 
 MANDATORY_KEYS = [
